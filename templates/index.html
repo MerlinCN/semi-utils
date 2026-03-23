@@ -110,7 +110,7 @@
       x-data="app()" x-init="init()">
 
 <!-- 顶部导航 -->
-<header class="glass-effect border-b border-slate-200/50 h-16 flex items-center px-6 shadow-sm shrink-0 z-20">
+<header class="glass-effect border-b border-slate-200/50 h-16 flex items-center justify-between px-6 shadow-sm shrink-0 z-20">
     <div class="flex items-center gap-3">
         <div class="w-10 h-10 bg-gradient-to-br from-primary-500 to-primary-600 rounded-xl flex items-center justify-center text-white font-bold shadow-lg shadow-primary-500/30">
             <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -122,11 +122,36 @@
             <p class="text-xs text-slate-400">v{{version}}</p>
         </div>
     </div>
+
+    <!-- 模式切换 -->
+    <div class="flex items-center gap-2 bg-slate-100 rounded-xl p-1">
+        <button @click="switchMode('normal')"
+                :class="mode === 'normal' ? 'bg-white text-primary-600 shadow-sm' : 'text-slate-500 hover:text-slate-700'"
+                class="px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200">
+            <div class="flex items-center gap-2">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z" />
+                </svg>
+                文件模式
+            </div>
+        </button>
+        <button @click="switchMode('temp')"
+                :class="mode === 'temp' ? 'bg-white text-primary-600 shadow-sm' : 'text-slate-500 hover:text-slate-700'"
+                class="px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200">
+            <div class="flex items-center gap-2">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z" />
+                </svg>
+                临时模式
+            </div>
+        </button>
+    </div>
 </header>
 
 <!-- 主布局 -->
 <main class="flex-1 p-5 overflow-hidden">
-    <div class="grid grid-cols-12 gap-5 h-full">
+    <!-- 文件模式界面 -->
+    <div x-show="mode === 'normal'" class="grid grid-cols-12 gap-5 h-full">
 
         <!-- Col 1: 配置管理 -->
         <div class="col-span-12 lg:col-span-3 flex flex-col h-full bg-white/80 backdrop-blur rounded-2xl shadow-lg shadow-slate-200/50 border border-slate-200/50 overflow-hidden animate-fade-in">
@@ -612,6 +637,143 @@
             </div>
         </div>
     </div>
+
+    <!-- 临时模式界面 -->
+    <div x-show="mode === 'temp'" class="h-full flex items-center justify-center">
+        <div class="grid grid-cols-12 gap-5 w-full max-w-7xl mx-auto">
+
+            <!-- 左侧：拖拽上传区域 -->
+            <div class="col-span-12 lg:col-span-6 bg-white/80 backdrop-blur rounded-2xl shadow-lg border border-slate-200/50 p-8 animate-fade-in">
+
+                <!-- 拖拽区域 -->
+                <div x-data="tempUpload"
+                     @dragover.prevent="isDragging = true"
+                     @dragleave.prevent="isDragging = false"
+                     @drop.prevent="handleDrop($event)"
+                     @paste.window="handlePaste($event)"
+                     :class="isDragging ? 'border-primary-500 bg-primary-50' : 'border-slate-300 bg-slate-50'"
+                     class="relative h-96 border-2 border-dashed rounded-2xl transition-all duration-200 flex flex-col items-center justify-center cursor-pointer hover:bg-primary-50 hover:border-primary-400"
+                     @click="$refs.fileInput.click()">
+
+                    <!-- 文件输入 (隐藏) -->
+                    <input type="file" x-ref="fileInput" @change="handleFileSelect($event)" accept="image/*" class="hidden">
+
+                    <!-- 无图片时的提示 -->
+                    <div x-show="!tempImage.url" class="text-center">
+                        <div class="w-20 h-20 mx-auto mb-4 rounded-full bg-gradient-to-br from-primary-100 to-primary-200 flex items-center justify-center">
+                            <svg class="w-10 h-10 text-primary-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
+                            </svg>
+                        </div>
+                        <p class="text-lg font-semibold text-slate-700 mb-2">拖拽图片到这里</p>
+                        <p class="text-sm text-slate-500">或点击选择文件 / Ctrl+V 粘贴图片</p>
+                        <p class="text-xs text-slate-400 mt-2">支持 JPG, PNG, HEIC 等格式</p>
+                    </div>
+
+                    <!-- 有图片时的预览 -->
+                    <div x-show="tempImage.url" class="relative w-full h-full" x-transition>
+                        <img :src="tempImage.url" class="w-full h-full object-contain rounded-xl">
+                        <button @click.stop="clearTempImage()"
+                                class="absolute top-2 right-2 p-2 bg-red-500 text-white rounded-lg hover:bg-red-600 transition-all shadow-lg">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                            </svg>
+                        </button>
+                    </div>
+
+                    <!-- 拖拽中的遮罩 -->
+                    <div x-show="isDragging"
+                         class="absolute inset-0 bg-primary-500/10 backdrop-blur-sm rounded-2xl flex items-center justify-center"
+                         x-transition>
+                        <div class="text-center">
+                            <svg class="w-16 h-16 mx-auto mb-2 text-primary-600 animate-bounce" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 14l-7 7m0 0l-7-7m7 7V3" />
+                            </svg>
+                            <p class="text-lg font-bold text-primary-600">释放以上传</p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 模板选择 -->
+                <div class="mt-6 space-y-3">
+                    <label class="config-label">选择水印模板</label>
+                    <select x-model="tempConfig.template_name"
+                            @change="switchTempTemplate($event.target.value)"
+                            class="w-full h-10 px-3 rounded-xl border border-slate-200 focus:border-primary-500 focus:ring-2 focus:ring-primary-500/20 outline-none transition-all">
+                        <template x-for="template in availableTemplates" :key="template">
+                            <option :value="template" x-text="template"></option>
+                        </template>
+                    </select>
+
+                    <!-- 处理按钮 -->
+                    <button @click="processTempImage()"
+                            :disabled="!tempImage.url || tempProcessing"
+                            class="w-full py-3 bg-gradient-to-r from-emerald-500 to-emerald-600 hover:from-emerald-600 hover:to-emerald-700 text-white rounded-xl font-bold shadow-lg shadow-emerald-500/30 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2">
+                        <svg x-show="!tempProcessing" class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z" />
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                        </svg>
+                        <svg x-show="tempProcessing" class="w-5 h-5 animate-spin" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                        </svg>
+                        <span x-text="tempProcessing ? '处理中...' : '开始处理'"></span>
+                    </button>
+                </div>
+            </div>
+
+            <!-- 右侧：处理结果 -->
+            <div class="col-span-12 lg:col-span-6 bg-white/80 backdrop-blur rounded-2xl shadow-lg border border-slate-200/50 p-8 animate-slide-up" style="animation-delay: 0.1s">
+                <h3 class="font-bold text-slate-700 mb-4 flex items-center gap-2">
+                    <svg class="w-5 h-5 text-primary-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                    </svg>
+                    处理结果
+                </h3>
+
+                <!-- 结果预览区 -->
+                <div class="h-96 bg-slate-50 rounded-2xl flex items-center justify-center relative overflow-hidden">
+                    <!-- 无结果时 -->
+                    <div x-show="!tempResult.url" class="text-center text-slate-400">
+                        <svg class="w-16 h-16 mx-auto mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                        </svg>
+                        <p class="text-sm">处理后的图片将显示在这里</p>
+                    </div>
+
+                    <!-- 有结果时 -->
+                    <div x-show="tempResult.url" class="w-full h-full" x-transition>
+                        <img :src="tempResult.url" class="w-full h-full object-contain">
+                    </div>
+                </div>
+
+                <!-- 操作按钮和保存信息 -->
+                <div class="mt-6 space-y-3">
+                    <!-- 保存信息 -->
+                    <div x-show="tempResult.outputFilename"
+                         class="p-3 bg-emerald-50 border border-emerald-200 rounded-xl flex items-center gap-2">
+                        <svg class="w-5 h-5 text-emerald-600 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                        </svg>
+                        <div class="flex-1 min-w-0">
+                            <p class="text-sm text-emerald-700">已保存到 output 文件夹</p>
+                            <p class="text-xs text-emerald-600 truncate" x-text="tempResult.outputFilename"></p>
+                        </div>
+                    </div>
+
+                    <!-- 复制按钮 -->
+                    <button @click="copyToClipboard()"
+                            :disabled="!tempResult.url"
+                            class="w-full py-3 bg-gradient-to-r from-primary-500 to-primary-600 hover:from-primary-600 hover:to-primary-700 text-white rounded-xl font-medium shadow-lg shadow-primary-500/30 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2v-1M8 5a2 2 0 002 2h2a2 2 0 002-2M8 5a2 2 0 012-2h2a2 2 0 012 2m0 0h2a2 2 0 012 2v3m2 4H10m0 0l3-3m-3 3l3 3" />
+                        </svg>
+                        复制图片到剪贴板
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
 </main>
 
 <!-- 模板名称输入模态框 -->
@@ -806,8 +968,65 @@
         }
     }
 
+    function tempUpload() {
+        return {
+            isDragging: false,
+            get tempImage() {
+                return Alpine.store('app').tempImage;
+            },
+
+            handleDrop(e) {
+                this.isDragging = false;
+                const files = e.dataTransfer.files;
+                if (files.length > 0) {
+                    this.handleFile(files[0]);
+                }
+            },
+
+            handleFileSelect(e) {
+                const files = e.target.files;
+                if (files.length > 0) {
+                    this.handleFile(files[0]);
+                }
+            },
+
+            handlePaste(e) {
+                const items = e.clipboardData.items;
+                for (let item of items) {
+                    if (item.type.startsWith('image/')) {
+                        const blob = item.getAsFile();
+                        this.handleFile(blob);
+                        break;
+                    }
+                }
+            },
+
+            handleFile(file) {
+                if (!file.type.startsWith('image/')) {
+                    Alpine.store('app').toast('请选择图片文件', 'error');
+                    return;
+                }
+
+                const reader = new FileReader();
+                reader.onload = (e) => {
+                    Alpine.store('app').tempImage.url = e.target.result;
+                    Alpine.store('app').tempImage.file = file;
+                    Alpine.store('app').tempImage.name = file.name;
+                };
+                reader.readAsDataURL(file);
+            },
+
+            clearTempImage() {
+                const app = Alpine.store('app');
+                app.tempImage = {url: '', file: null, name: ''};
+                app.tempResult = {url: '', blob: null, outputPath: '', outputFilename: ''};
+            }
+        };
+    }
+
     function app() {
         return {
+            mode: 'normal',  // 'normal' 或 'temp'
             isStatic: true,
             loading: {files: false, process: false},
             config: {input_folder: '', output_folder: '', template: '{}', template_name: '', quality: 100, override_existed: false},
@@ -818,6 +1037,12 @@
             selectedItems: [],
             preview: {url: '', name: '', isFile: false},
             aceEditor: null,
+
+            // 临时模式相关
+            tempImage: {url: '', file: null, name: ''},
+            tempResult: {url: '', blob: null, outputPath: '', outputFilename: ''},
+            tempProcessing: false,
+            tempConfig: {template_name: ''},
             progress: {
                 active: false,
                 complete: false,
@@ -878,6 +1103,118 @@
 
             get canStart() {
                 return this.isStatic && this.selectedItems.length > 0 && !this.progress.active;
+            },
+
+            // 切换模式
+            switchMode(newMode) {
+                this.mode = newMode;
+                if (newMode === 'temp' && this.availableTemplates.length > 0) {
+                    this.tempConfig.template_name = this.config.template_name || this.availableTemplates[0];
+                }
+            },
+
+            // 临时模式：切换模板
+            async switchTempTemplate(templateName) {
+                this.tempConfig.template_name = templateName;
+            },
+
+            // 临时模式：处理图片
+            async processTempImage() {
+                if (!this.tempImage.file) {
+                    this.toast('请先选择图片', 'error');
+                    return;
+                }
+
+                this.tempProcessing = true;
+                this.tempResult = {url: '', blob: null, outputPath: '', outputFilename: ''};
+
+                try {
+                    // 获取模板内容
+                    const templateRes = await fetch(`/api/v1/template/${this.tempConfig.template_name}`);
+                    const templateData = await templateRes.json();
+
+                    // 创建 FormData
+                    const formData = new FormData();
+                    formData.append('image', this.tempImage.file);
+                    formData.append('template_name', this.tempConfig.template_name);
+
+                    // 调用临时处理 API
+                    const res = await fetch('/api/v1/temp_process', {
+                        method: 'POST',
+                        body: formData
+                    });
+
+                    if (!res.ok) {
+                        throw new Error('处理失败');
+                    }
+
+                    // 获取输出文件信息
+                    const outputPath = res.headers.get('X-Output-Path');
+                    const outputFilename = res.headers.get('X-Output-Filename');
+
+                    const blob = await res.blob();
+
+                    // 确保 blob 类型信息正确
+                    const typedBlob = new Blob([blob], { type: blob.type || 'image/jpeg' });
+                    const url = URL.createObjectURL(typedBlob);
+
+                    this.tempResult = {url, blob: typedBlob, outputPath, outputFilename};
+                    this.toast('处理成功！图片已保存到 output 文件夹', 'success');
+
+                } catch (e) {
+                    this.toast('处理失败: ' + e.message, 'error');
+                } finally {
+                    this.tempProcessing = false;
+                }
+            },
+
+            // 复制到剪贴板
+            async copyToClipboard() {
+                if (!this.tempResult.blob) {
+                    this.toast('没有可复制的图片', 'error');
+                    return;
+                }
+
+                try {
+                    // 创建一个 canvas 来处理图片
+                    const img = new Image();
+                    const canvas = document.createElement('canvas');
+                    const ctx = canvas.getContext('2d');
+
+                    await new Promise((resolve, reject) => {
+                        img.onload = resolve;
+                        img.onerror = reject;
+                        img.src = this.tempResult.url;
+                    });
+
+                    canvas.width = img.width;
+                    canvas.height = img.height;
+
+                    // 填充白色背景（用于 JPEG）
+                    ctx.fillStyle = '#FFFFFF';
+                    ctx.fillRect(0, 0, canvas.width, canvas.height);
+                    ctx.drawImage(img, 0, 0);
+
+                    // 转换为 PNG 用于剪贴板（剪贴板更好地支持 PNG）
+                    const pngBlob = await new Promise(resolve => {
+                        canvas.toBlob(resolve, 'image/png');
+                    });
+
+                    // 使用 Clipboard API 复制图片
+                    const item = new ClipboardItem({'image/png': pngBlob});
+                    await navigator.clipboard.write([item]);
+                    this.toast('已复制到剪贴板！', 'success');
+                } catch (e) {
+                    console.error('复制图片失败:', e);
+                    // 降级方案：提示用户右键保存
+                    this.toast('复制失败，请右键图片选择"复制图像"', 'error');
+                }
+            },
+
+
+            clearTempImage() {
+                this.tempImage = {url: '', file: null, name: ''};
+                this.tempResult = {url: '', blob: null, outputPath: '', outputFilename: ''};
             },
 
             async init() {

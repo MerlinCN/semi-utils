@@ -10,8 +10,13 @@ logos_dir = Path('./config/logos')
 templates_dir = Path('./config/templates')
 
 def load_config() -> configparser.ConfigParser:
+    """加载配置文件
+
+    Returns:
+        ConfigParser: 配置解析器对象
+    """
     config = configparser.ConfigParser()
-    config.read(CONFIG_PATH)
+    config.read(CONFIG_PATH, encoding='utf-8')
     return config
 
 

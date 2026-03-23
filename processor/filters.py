@@ -253,13 +253,40 @@ class WatermarkFilter(FilterProcessor):
         left_margin = ctx.getint("left_margin", 0)
         right_margin = ctx.getint("right_margin", 0)
         top_margin = ctx.getint("top_margin", 0)
-        bottom_margin = ctx.getint("bottom_margin", int(img.height * .12))
-        middle_spacing = ctx.getint("middle_spacing", int(bottom_margin * .05))
+
+        # 检测是否为竖屏图片
+        is_portrait = img.height > img.width
+
+        # 根据图片方向动态调整底部边距
+        if is_portrait:
+            # 竖屏：基于宽度计算，使用更小的比例
+            default_bottom_margin = int(img.width * .15)
+        else:
+            # 横屏：保持原有逻辑
+            default_bottom_margin = int(img.height * .12)
+
+        bottom_margin = ctx.getint("bottom_margin", default_bottom_margin)
+
+        # 根据图片方向调整中间间距
+        if is_portrait:
+            # 竖屏：使用更小的中间间距比例
+            default_middle_spacing = int(bottom_margin * .03)
+        else:
+            # 横屏：保持原有逻辑
+            default_middle_spacing = int(bottom_margin * .05)
+
+        middle_spacing = ctx.getint("middle_spacing", default_middle_spacing)
         right_alignment = ctx.getenum("right_alignment", Alignment.RIGHT, Alignment)
 
+        # 根据图片方向调整文字高度
         for t_s in [ctx.get("left_top"), ctx.get("left_bottom"), ctx.get("right_top"), ctx.get("right_bottom")]:
             if "height" not in t_s:
-                t_s["height"] = int(bottom_margin * .3)
+                if is_portrait:
+                    # 竖屏：使用更小的文字高度比例
+                    t_s["height"] = int(bottom_margin * .25)
+                else:
+                    # 横屏：保持原有逻辑
+                    t_s["height"] = int(bottom_margin * .3)
 
         left_top = start_process([ctx.get("left_top")])
         left_bottom = start_process([ctx.get("left_bottom")])
@@ -273,7 +300,14 @@ class WatermarkFilter(FilterProcessor):
 
         canvas_width = img.width + left_margin + right_margin
         canvas_height = img.height + top_margin + bottom_margin
-        common_spacing = int(.02 * canvas_width)
+
+        # 根据图片方向调整横向间距
+        if is_portrait:
+            # 竖屏：使用更大的间距比例，避免文字拥挤
+            common_spacing = int(.03 * canvas_width)
+        else:
+            # 横屏：保持原有间距
+            common_spacing = int(.02 * canvas_width)
 
         # 新建画布
         canvas = Image.new("RGBA", (canvas_width, canvas_height), color)
